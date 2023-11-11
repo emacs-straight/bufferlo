@@ -6,7 +6,7 @@
 ;; Maintainer: Florian Rommel <mail@florommel.de>
 ;; Url: https://github.com/florommel/bufferlo
 ;; Created: 2021-09-15
-;; Version: 0.2
+;; Version: 0.3
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: buffer frame tabs local
 
@@ -500,6 +500,25 @@ The optional parameter KILLALL is passed to `bufferlo-kill-buffers'"
   (bufferlo-kill-buffers killall)
   (tab-bar-close-tab))
 
+(defun bufferlo-isolate-project (&optional file-buffers-only)
+  "Isolate a project in the frame or tab.
+Remove all buffers that do not belong to the current project from
+the local buffer list.  When FILE-BUFFERS-ONLY is non-nil or the
+prefix argument is given, remove only buffers that visit a file.
+Buffers matching `bufferlo-include-buffer-filters' are not removed."
+  (interactive "P")
+  (let ((curr-project (project-current))
+        (include (bufferlo--merge-regexp-list
+                  (append '("a^") bufferlo-include-buffer-filters))))
+    (if curr-project
+        (dolist (buffer (bufferlo-buffer-list))
+          (when (and (not (string-match-p include (buffer-name buffer)))
+                     (not (equal curr-project
+                                 (with-current-buffer buffer (project-current))))
+                     (or (not file-buffers-only) (buffer-file-name buffer)))
+            (bufferlo-remove buffer)))
+      (message "Current buffer is not part of a project"))))
+
 (defun bufferlo-switch-to-buffer (buffer &optional norecord force-same-window)
   "Display the BUFFER in the selected window.
 Completion includes only local buffers.
@@ -516,11 +535,35 @@ If the prefix arument is given, include all buffers."
          (lambda (b) (member (if (stringp b) b (car b)) lbs)))))))
   (switch-to-buffer buffer norecord force-same-window))
 
+(defvar-local bufferlo--buffer-menu-this-frame nil)
+
+(defun bufferlo--local-buffer-list-this-frame ()
+  "Return the local buffer list of the buffer's frame."
+  (bufferlo-buffer-list bufferlo--buffer-menu-this-frame))
+
 (defun bufferlo-list-buffers ()
-  "Display a list of local buffers in the \"*Buffer List*\" buffer."
+  "Display a list of local buffers."
   (interactive)
   (display-buffer
-   (list-buffers-noselect nil #'bufferlo-buffer-list)))
+   (let* ((old-buffer (current-buffer))
+          (name (or
+                 (seq-find (lambda (b)
+                             (string-match-p
+                              "\\`\\*Local Buffer List\\*\\(<[0-9]*>\\)?\\'"
+                              (buffer-name b)))
+                           (bufferlo-buffer-list))
+                 (generate-new-buffer-name "*Local Buffer List*")))
+	  (buffer (get-buffer-create name)))
+     (with-current-buffer buffer
+       (Buffer-menu-mode)
+       (setq bufferlo--buffer-menu-this-frame (selected-frame))
+       (setq Buffer-menu-files-only nil)
+       (setq Buffer-menu-buffer-list #'bufferlo--local-buffer-list-this-frame)
+       (setq Buffer-menu-filter-predicate nil)
+       (list-buffers--refresh #'bufferlo--local-buffer-list-this-frame old-buffer)
+       (tabulated-list-print)
+       (revert-buffer))
+     buffer)))
 
 (with-eval-after-load 'ibuf-ext
   (define-ibuffer-filter bufferlo-local-buffers
