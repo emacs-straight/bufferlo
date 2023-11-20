@@ -6,7 +6,7 @@
 ;; Maintainer: Florian Rommel <mail@florommel.de>
 ;; Url: https://github.com/florommel/bufferlo
 ;; Created: 2021-09-15
-;; Version: 0.3
+;; Version: 0.4
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: buffer frame tabs local
 
@@ -108,6 +108,25 @@ This is a list of regular expressions that match buffer names."
 (defcustom bufferlo-ibuffer-bind-local-buffer-filter t
   "If non-nil, the local buffer filter is bound to \"/ l\" in ibuffer."
   :type '(repeat string))
+
+(defcustom bufferlo-local-scratch-buffer-name "*local scratch*"
+  "Base name of the local scratch buffer.
+Multiple frame/tabs will use `generate-new-buffer-name' (which
+appends \"<N>\" to the name) in order to get a unique buffer.
+
+Local scratch buffers are optional and not used by default.
+Use the following functions to create and work with them:
+`bufferlo-create-local-scratch-buffer',
+`bufferlo-get-local-scratch-buffer',
+`bufferlo-switch-to-local-scratch-buffer',
+and `bufferlo-toggle-local-scratch-buffer'.
+For example, create a dedicated local scratch buffer for all tabs and frames:
+  (setq \\='tab-bar-new-tab-choice #\\='bufferlo-create-local-scratch-buffer)
+  (add-hook \\='after-make-frame-functions
+             #\\='bufferlo-switch-to-local-scratch-buffer)
+
+You can set this to \"*scratch*\"."
+  :type 'string)
 
 (defvar bufferlo--desktop-advice-active nil)
 (defvar bufferlo--desktop-advice-active-force nil)
@@ -519,6 +538,127 @@ Buffers matching `bufferlo-include-buffer-filters' are not removed."
             (bufferlo-remove buffer)))
       (message "Current buffer is not part of a project"))))
 
+(defun bufferlo-find-buffer (buffer-or-name)
+  "Switch to the frame/tab containing BUFFER-OR-NAME in its local list.
+If multiple frame or tabs contain the buffer, interactively prompt
+for the to-be-selected frame and tab.
+This does not select the buffer -- just the containing frame and tab."
+  (interactive "b")
+  (let* ((buffer (get-buffer buffer-or-name))
+         (flatten (lambda (list)
+                    (apply #'append (append list '()))))
+         (search-tabs (lambda (f)
+                        (let ((i 0))
+                          (mapcar
+                           (lambda (tab)
+                             (setq i (1+ i))
+                             (when (bufferlo-local-buffer-p buffer f (1- i) t)
+                               (list f (frame-parameter f 'name)
+                                     (eq f (selected-frame))
+                                     i (cdr (assq 'name tab)))))
+                           (frame-parameter f 'tabs)))))
+         (search-frames (lambda (f)
+                          (unless (frame-parameter f 'no-accept-focus)
+                            (if (frame-parameter f 'tabs)
+                                ;; has tabs
+                                (funcall search-tabs f)
+                              ;; has no tabs
+                              (when (bufferlo-local-buffer-p buffer f nil t)
+                                (list (list f (frame-parameter f 'name)
+                                            (eq f (selected-frame))
+                                            nil nil)))))))
+         (candidates (seq-filter 'identity
+                                 (funcall flatten
+                                          (mapcar
+                                           (lambda (f)
+                                             (funcall search-frames f))
+                                           (frame-list)))))
+         (candidates (mapcar
+                      (lambda (c)
+                        (let ((sel (if (nth 2 c) " [this]" ""))
+                              (frame-name (nth 1 c))
+                              (frame-obj  (nth 0 c))
+                              (tab-index  (nth 3 c))
+                              (tab-name   (nth 4 c)))
+                          (if tab-index
+                              (cons (format "Frame: %s (%s)%s  Tab %s: %s"
+                                            frame-name frame-obj sel
+                                            tab-index tab-name)
+                                    c)
+                            (cons (format "Frame: %s (%s)%s"
+                                          frame-name frame-obj sel)
+                                  c))))
+                      candidates))
+         (selected (if (cdr candidates)
+                       (completing-read
+                        "Select frame/tab: "
+                        candidates
+                        nil t)
+                     (caar candidates)))
+         (selected (assoc selected candidates)))
+    (if (not selected)
+        (message "Orphan: No frame/tab contains buffer '%s'" (buffer-name buffer))
+      (let ((frame (nth 1 selected))
+            (tab-index (nth 4 selected)))
+        (select-frame-set-input-focus frame)
+        (when tab-index
+          (tab-bar-select-tab tab-index))
+        frame))))
+
+(defun bufferlo-find-buffer-switch (buffer-or-name)
+  "Switch to the frame/tab containig BUFFER-OR-NAME and select the buffer.
+This is like `bufferlo-find-buffer' but additionally selects the buffer."
+  (interactive "b")
+  (when (bufferlo-find-buffer buffer-or-name)
+    (switch-to-buffer buffer-or-name)))
+
+(defun bufferlo-get-local-scratch-buffer ()
+  "Get the local scratch buffer or create it if not already existent and return it."
+  (let ((buffer (seq-find (lambda (b)
+                            (string-match-p
+                             (concat
+                              "^"
+                              (regexp-quote bufferlo-local-scratch-buffer-name)
+                              "\\(<[0-9]*>\\)?$")
+                             (buffer-name b)))
+                          (bufferlo-buffer-list nil nil t))))
+    (or buffer
+        (get-buffer-create
+         (generate-new-buffer-name bufferlo-local-scratch-buffer-name)))))
+
+(defun bufferlo-create-local-scratch-buffer ()
+  "Create a local scratch buffer and return it."
+  (get-buffer-create (generate-new-buffer-name bufferlo-local-scratch-buffer-name)))
+
+(defun bufferlo-switch-to-scratch-buffer (&optional frame)
+  "Switch to the scratch buffer.
+When FRAME is non-nil, switch to the scratch buffer in the specified frame
+instead of the current one."
+  (interactive)
+  (if frame
+      (with-selected-frame frame
+        (switch-to-buffer "*scratch*"))
+    (switch-to-buffer "*scratch*")))
+
+(defun bufferlo-switch-to-local-scratch-buffer (&optional frame)
+  "Switch to the local scratch buffer.
+When FRAME is non-nil, switch to the local scratch buffer in the specified frame
+instead of the current one."
+  (interactive)
+  (if frame
+      (with-selected-frame frame
+        (switch-to-buffer (bufferlo-get-local-scratch-buffer)))
+    (switch-to-buffer (bufferlo-get-local-scratch-buffer))))
+
+(defun bufferlo-toggle-local-scratch-buffer ()
+  "Switch to the local scratch buffer or bury it if it is already selected.
+Creates a new local scratch buffer if none exists for this frame/tab."
+  (interactive)
+  (let ((buffer (bufferlo-get-local-scratch-buffer)))
+    (if (eq buffer (current-buffer))
+        (bury-buffer)
+      (switch-to-buffer buffer))))
+
 (defun bufferlo-switch-to-buffer (buffer &optional norecord force-same-window)
   "Display the BUFFER in the selected window.
 Completion includes only local buffers.
@@ -565,17 +705,41 @@ If the prefix arument is given, include all buffers."
        (revert-buffer))
      buffer)))
 
+(defun bufferlo-list-orphan-buffers ()
+  "Display a list of orphan buffers."
+  (interactive)
+  (display-buffer
+   (let* ((old-buffer (current-buffer))
+          (name "*Orphan Buffer List*")
+	  (buffer (get-buffer-create name)))
+     (with-current-buffer buffer
+       (Buffer-menu-mode)
+       (setq bufferlo--buffer-menu-this-frame (selected-frame))
+       (setq Buffer-menu-files-only nil)
+       (setq Buffer-menu-buffer-list #'bufferlo--get-orphan-buffers)
+       (setq Buffer-menu-filter-predicate nil)
+       (list-buffers--refresh #'bufferlo--get-orphan-buffers old-buffer)
+       (tabulated-list-print)
+       (revert-buffer))
+     buffer)))
+
 (with-eval-after-load 'ibuf-ext
   (define-ibuffer-filter bufferlo-local-buffers
       "Limit current view to local buffers."
     (:description "local buffers" :reader nil)
-    (bufferlo-local-buffer-p buf)))
+    (bufferlo-local-buffer-p buf))
+  (define-ibuffer-filter bufferlo-orphan-buffers
+      "Limit current view to orphan buffers."
+    (:description "orphan buffers" :reader nil)
+    (not (memq buf (bufferlo--get-captured-buffers)))))
 
 (with-eval-after-load 'ibuffer
   (when bufferlo-ibuffer-bind-local-buffer-filter
     (require 'ibuf-ext)
     (define-key ibuffer--filter-map (kbd "l")
-                #'ibuffer-filter-by-bufferlo-local-buffers)))
+                #'ibuffer-filter-by-bufferlo-local-buffers)
+    (define-key ibuffer--filter-map (kbd "L")
+                #'ibuffer-filter-by-bufferlo-orphan-buffers)))
 
 (defun bufferlo-ibuffer (&optional other-window-p noselect shrink)
   "Invoke `ibuffer' filtered for local buffers.
@@ -590,6 +754,14 @@ The parameters OTHER-WINDOW-P NOSELECT SHRINK are passed to `ibuffer'."
                          (bufferlo-buffer-list))
                (generate-new-buffer-name "*Bufferlo Ibuffer*"))))
     (ibuffer other-window-p name '((bufferlo-local-buffers . nil))
+             noselect shrink)))
+
+(defun bufferlo-ibuffer-orphans (&optional other-window-p noselect shrink)
+  "Invoke `ibuffer' filtered for orphan buffers.
+The parameters OTHER-WINDOW-P NOSELECT SHRINK are passed to `ibuffer'."
+  (interactive)
+  (let ((name "*Bufferlo Orphans Ibuffer*"))
+    (ibuffer other-window-p name '((bufferlo-orphan-buffers . nil))
              noselect shrink)))
 
 (provide 'bufferlo)
