@@ -1,0 +1,2 @@
+;; Generated package description from bufferlo.el  -*- no-byte-compile: t -*-
+(define-package "bufferlo" "0.8.0.20240621.221659" "Manage frame/tab-local buffer lists" '((emacs "27.1")) :commit "63ae8e60d53c96a7d33a6400f375021cec1233e1" :authors '(("Florian Rommel" . "mail@florommel.de")) :maintainer '("Florian Rommel" . "mail@florommel.de") :keywords '("buffer" "frame" "tabs" "local") :url "https://github.com/florommel/bufferlo")
