@@ -1356,6 +1356,7 @@ Similar packages
   • [Bufler]: rule-based workspace management and buffer grouping
   • [Burly]: save and restore window configurations for single or
     multiple frames
+  • [purpose]: manage windows and buffers according to purposes
   • [frame-purpose]: specialize frames to only display certain buffers
   • [perject]: purpose/project-based buffer isolation and session
     management based on `desktop.el'
@@ -1393,6 +1394,8 @@ Similar packages
 [Bufler] <https://github.com/alphapapa/bufler.el>
 
 [Burly] <https://github.com/alphapapa/burly.el>
+
+[purpose] <https://github.com/bmag/emacs-purpose>
 
 [frame-purpose] <https://github.com/alphapapa/frame-purpose.el>
 
