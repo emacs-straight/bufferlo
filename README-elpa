@@ -635,6 +635,12 @@ Frame bookmark options
   │ ;; store frame names in their bookmarks, and restore them when loading
   │ (setq bufferlo-bookmark-frame-persist-frame-name t) ; default nil
   └────
+  ┌────
+  │ ;; control the restoration of tab groups
+  │ (setq bufferlo-bookmark-restore-tab-groups nil) ; do not restore tab groups, the default
+  │ (setq bufferlo-bookmark-restore-tab-groups t) ; restore tab groups
+  │ (setq bufferlo-bookmark-restore-tab-groups 'frames) ; restore tab groups only for frame bookmarks
+  └────
 
 
 Tab bookmark options
@@ -678,6 +684,16 @@ Tab bookmark options
   │ (setq bufferlo-bookmark-tab-failed-buffer-policy 'placeholder-orig) ; placeholder buffer with original buffer name
   │ (setq bufferlo-bookmark-tab-failed-buffer-policy "*scratch*") ; default to a specific buffer
   │ (setq bufferlo-bookmark-tab-failed-buffer-policy #'my/failed-bookmark-handler) ; function to call that returns a buffer
+  └────
+  ┌────
+  │ ;; restore the tab's explicit name (if set)
+  │ (setq bufferlo-bookmark-tab-restore-explicit-name t) ; default
+  └────
+  ┌────
+  │ ;; control the restoration of tab groups
+  │ (setq bufferlo-bookmark-restore-tab-groups nil) ; do not restore tab groups, the default
+  │ (setq bufferlo-bookmark-restore-tab-groups t) ; restore tab groups
+  │ (setq bufferlo-bookmark-restore-tab-groups 'tabs) ; restore tab groups only for tab bookmarks
   └────
 
 
