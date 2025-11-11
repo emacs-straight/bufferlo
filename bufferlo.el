@@ -894,6 +894,15 @@ string, FACE is the face for STR."
 
 (defvar bufferlo--active-sets) ; byte compiler
 
+(defun bufferlo--active-set-name-for-bookmark (bookmark-name)
+  "Return the active set name that BOOKMARK-NAME belongs to, or nil."
+  (unless (null bookmark-name)
+    (catch :set-name
+      (dolist (set bufferlo--active-sets)
+        (when (member bookmark-name
+                      (alist-get 'bufferlo-bookmark-names (cdr set)))
+          (throw :set-name (car set)))))))
+
 (defun bufferlo-mode-line-format ()
   "Bufferlo mode-line format to display the current active frame or tab bookmark."
   (when bufferlo-mode
@@ -921,6 +930,8 @@ string, FACE is the face for STR."
                        (bufferlo--mode-line-format-helper
                         abm
                         (concat bufferlo-mode-line-set-active-prefix
+                                (bufferlo--active-set-name-for-bookmark fbm)
+                                (bufferlo--active-set-name-for-bookmark tbm)
                                 (when (or fbm tbm) bufferlo-mode-line-delimiter))
                         'bufferlo-mode-line-set-face))
                      (when fbm
@@ -1004,7 +1015,7 @@ string, FACE is the face for STR."
                                  #'string-equal)))
     (setq bufferlo--command-line-noload pos)
     (setq command-line-args (seq-remove-at-position command-line-args pos)))
-  (when (file-exists-p (expand-file-name "bufferlo-noload" user-emacs-directory))
+  (when (locate-user-emacs-file "bufferlo-noload")
     (message "bufferlo-noload file found; inhibiting bufferlo bookmark loading")
     (setq bufferlo--command-line-noload t)))
 
@@ -1869,9 +1880,12 @@ argument INTERNAL-TOO is non-nil."
   (interactive)
   (bufferlo--warn)
   (setq frame (or frame (selected-frame)))
-  (when (or (not bufferlo-delete-frame-kill-buffers-prompt)
-            (y-or-n-p "Kill frame and its buffers? "))
-    (let ((fbm (frame-parameter frame 'bufferlo-bookmark-frame-name)))
+  (let ((fbm (frame-parameter frame 'bufferlo-bookmark-frame-name)))
+    (when (or (not bufferlo-delete-frame-kill-buffers-prompt)
+              (y-or-n-p (format "Kill frame%s and its buffers? "
+                                (if fbm
+                                    (format " `%s'" fbm)
+                                  ""))))
       (cl-labels
           ((save-as-current (frame)
              ;; We need this if called in a batch
@@ -1907,12 +1921,15 @@ The optional arguments KILLALL and INTERNAL-TOO are passed to
 `bufferlo-kill-buffers'."
   (interactive "P")
   (bufferlo--warn)
-  (when (or (not bufferlo-close-tab-kill-buffers-prompt)
-            (y-or-n-p "Kill tab and its buffers? "))
-    (let* ((orig-frame (selected-frame))
-           (orig-tab (bufferlo--current-tab))
-           (tbm (alist-get 'bufferlo-bookmark-tab-name orig-tab))
-           kill-buffer-closed-tab)
+  (let* ((orig-frame (selected-frame))
+         (orig-tab (bufferlo--current-tab))
+         (tbm (alist-get 'bufferlo-bookmark-tab-name orig-tab))
+         kill-buffer-closed-tab)
+    (when (or (not bufferlo-close-tab-kill-buffers-prompt)
+              (y-or-n-p (format "Kill tab%s and its buffers? "
+                                (if tbm
+                                    (format " `%s'" tbm)
+                                  ""))))
       (pcase bufferlo-bookmark-tab-save-on-close
         ((or 't 'on-kill-buffers)
          (when (y-or-n-p (format-message "Save tab bookmark `%s'? " tbm))
@@ -3240,7 +3257,8 @@ When non-nil, NO-SORT uses the natural order of the CANDIDATES list."
   "Produce an alist for FRAME pixel-level geometry.
 The alist is of the form:
 
-  ((left . pixels)
+  ((fullscreen . value) ; nil fullwidth fullheight fullboth maximized, etc.
+   (left . pixels)
    (top . pixels)
    (width . pixels)
    (height . pixels))
@@ -3248,7 +3266,8 @@ The alist is of the form:
 Return nil if no pixel-level geometry is available; for example, if the
 display is a tty."
   (if (display-graphic-p frame)
-      `((left . ,(frame-parameter frame 'left))
+      `((fullscreen . ,(frame-parameter frame 'fullscreen))
+        (left . ,(frame-parameter frame 'left))
         (top . ,(frame-parameter frame 'top))
         (width . ,(frame-text-width frame))
         (height .,(frame-text-height frame)))
@@ -3256,7 +3275,11 @@ display is a tty."
 
 (defun bufferlo-set-frame-geometry-default (frame-geometry &optional frame)
   "Set FRAME-GEOMETRY as produced by `bufferlo-frame-geometry-default'.
-Geometry set for FRAME or the current frame, if nil."
+Set geometry for FRAME or the current frame, if nil.
+
+If `frame-geometry' contains a non-nil \\='fullscreen parameter, it is
+applied after the pixelwise geometry.  This accommodates \\='fullwidth
+and \\='fullheight by first setting the respective height or width."
   ;; Some window managers need an extra display cycle for frame
   ;; changes to take effect from Emacs's perspective, so we add
   ;; needed sit-for calls.
@@ -3267,13 +3290,18 @@ Geometry set for FRAME or the current frame, if nil."
     (when (and .left .top .width .height)
       (let ((frame-resize-pixelwise t)
             (frame-inhibit-implied-resize t))
+        ;; There's a bug in Emacs where if fullscreen is non-nil and an
+        ;; explicit location and/or size is specified, fullscreen does not
+        ;; reset to nil. We do that first.
+        (set-frame-parameter frame 'fullscreen nil)
         (set-frame-position frame .left .top)
         (sleep-for bufferlo-frame-sleep-for)
-        ;; Clamp size to restore frames larger than the current display size.
+        ;; Clamp to the current display size to handle a too large frame.
         (set-frame-size frame
                         (min .width (display-pixel-width))
                         (min .height (display-pixel-height))
                         'pixelwise)
+        (set-frame-parameter frame 'fullscreen .fullscreen)
         (sleep-for bufferlo-frame-sleep-for)))))
 
 (defvar bufferlo--active-sets nil
