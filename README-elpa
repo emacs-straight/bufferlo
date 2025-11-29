@@ -1024,7 +1024,7 @@ Consult
 
   This is an example of the first configuration method:
   ┌────
-  │ (defvar my:bufferlo-consult--source-local-buffer
+  │ (defvar my:bufferlo-consult--source-local-buffers
   │   (list :name "Bufferlo Local Buffers"
   │ 	:narrow   ?l
   │ 	:category 'buffer
@@ -1038,7 +1038,7 @@ Consult
   │ 			      :as #'buffer-name)))
   │   "Local Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
-  │ (defvar my:bufferlo-consult--source-buffer
+  │ (defvar my:bufferlo-consult--source-other-buffers
   │   (list :name "Bufferlo Other Buffers"
   │ 	:narrow   ?b
   │ 	:category 'buffer
