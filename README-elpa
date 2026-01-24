@@ -609,9 +609,11 @@ Frame bookmark options
   settings.
 
   ┌────
-  │ ;; make a new frame to hold loaded frame bookmarks
+  │ ;; make a new frame, or reuse the current frame to hold loaded frame bookmarks
+  │ (setq bufferlo-bookmark-frame-load-make-frame nil) ; reuse the current frame
   │ (setq bufferlo-bookmark-frame-load-make-frame t) ; default is nil for backward compatibility
-  │ (setq bufferlo-bookmark-frame-load-make-frame 'restore-geometry)
+  │ (setq bufferlo-bookmark-frame-load-make-frame 'restore-geometry) ; make a new frame and restore geometry
+  │ (setq bufferlo-bookmark-frame-load-make-frame 'reuse-restore-geometry) ; reuse the current frame and restore geometry
   └────
   ┌────
   │ ;; policy when loading onto an already bookmarked frame
@@ -802,7 +804,7 @@ Frame geometry options
   │ ;; inhibit additional frame parameter symbols from being stored by `frameset-save'
   │ (setq bufferlo-frameset-save-filter nil)
   │ (setq bufferlo-frameset-save-filter '(my:frame-id ; practical example
-  │ 				      zoom--frame-snapshot))
+  │                                       zoom--frame-snapshot))
   └────
   ┌────
   │ ;; inhibit additional frame parameter symbols from being restored by `frameset-restore'
@@ -826,12 +828,12 @@ Frame geometry options
   │ (defun my/bufferlo-frameset-restore-parameters ()
   │   "Function to create parameters for `frameset-restore', which see."
   │   (cond (my:on-linux-gnome
-  │ 	 (list :reuse-frames nil
-  │ 	       :force-display nil ; bufferlo defaults to t which works on macOS
-  │ 	       :force-onscreen (display-graphic-p)
-  │ 	       :cleanup-frames nil))
-  │ 	(t
-  │ 	 (bufferlo-frameset-restore-parameters-default))))
+  │          (list :reuse-frames nil
+  │                :force-display nil ; bufferlo defaults to t which works on macOS
+  │                :force-onscreen (display-graphic-p)
+  │                :cleanup-frames nil))
+  │         (t
+  │          (bufferlo-frameset-restore-parameters-default))))
   │ (setq bufferlo-frameset-restore-parameters-function #'my/bufferlo-frameset-restore-parameters)
   └────
 
@@ -904,15 +906,15 @@ Mode line
   • To control mode-line faces:
   ┌────
   │ (set-face-attribute 'bufferlo-mode-line-face nil
-  │ 		    :box '(:line-width (-1 . -1) :color "#8aca9f")
-  │ 		    :height 0.85)
+  │                     :box '(:line-width (-1 . -1) :color "#8aca9f")
+  │                     :height 0.85)
   │ ;; below inherit bufferlo-mode-line-face
   │ (set-face-attribute 'bufferlo-mode-line-frame-bookmark-face nil
-  │ 		    :foreground "#8aca0f")
+  │                     :foreground "#8aca0f")
   │ (set-face-attribute 'bufferlo-mode-line-tab-bookmark-face nil
-  │ 		    :foreground "#00ffff")
+  │                     :foreground "#00ffff")
   │ (set-face-attribute 'bufferlo-mode-line-set-face nil
-  │ 		    :foreground "#000fff")
+  │                     :foreground "#000fff")
   └────
 
 
@@ -1026,29 +1028,29 @@ Consult
   ┌────
   │ (defvar my:bufferlo-consult--source-local-buffers
   │   (list :name "Bufferlo Local Buffers"
-  │ 	:narrow   ?l
-  │ 	:category 'buffer
-  │ 	:face     'consult-buffer
-  │ 	:history  'buffer-name-history
-  │ 	:state    #'consult--buffer-state
-  │ 	:default  t
-  │ 	:items    (lambda () (consult--buffer-query
-  │ 			      :predicate #'bufferlo-local-buffer-p
-  │ 			      :sort 'visibility
-  │ 			      :as #'buffer-name)))
+  │         :narrow   ?l
+  │         :category 'buffer
+  │         :face     'consult-buffer
+  │         :history  'buffer-name-history
+  │         :state    #'consult--buffer-state
+  │         :default  t
+  │         :items    (lambda () (consult--buffer-query
+  │                               :predicate #'bufferlo-local-buffer-p
+  │                               :sort 'visibility
+  │                               :as #'buffer-name)))
   │   "Local Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │ (defvar my:bufferlo-consult--source-other-buffers
   │   (list :name "Bufferlo Other Buffers"
-  │ 	:narrow   ?b
-  │ 	:category 'buffer
-  │ 	:face     'consult-buffer
-  │ 	:history  'buffer-name-history
-  │ 	:state    #'consult--buffer-state
-  │ 	:items    (lambda () (consult--buffer-query
-  │ 			      :predicate #'bufferlo-non-local-buffer-p
-  │ 			      :sort 'visibility
-  │ 			      :as #'buffer-name)))
+  │         :narrow   ?o
+  │         :category 'buffer
+  │         :face     'consult-buffer
+  │         :history  'buffer-name-history
+  │         :state    #'consult--buffer-state
+  │         :items    (lambda () (consult--buffer-query
+  │                               :predicate #'bufferlo-non-local-buffer-p
+  │                               :sort 'visibility
+  │                               :as #'buffer-name)))
   │   "Non-local Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │ ;; add in the reverse order of display preference
@@ -1064,29 +1066,29 @@ Consult
   ┌────
   │ (defvar my:bufferlo-consult--source-all-buffers
   │   (list :name "Bufferlo All Buffers"
-  │ 	:narrow   ?a
-  │ 	:hidden   t
-  │ 	:category 'buffer
-  │ 	:face     'consult-buffer
-  │ 	:history  'buffer-name-history
-  │ 	:state    #'consult--buffer-state
-  │ 	:items    (lambda () (consult--buffer-query
-  │ 			      :sort 'visibility
-  │ 			      :as #'buffer-name)))
+  │         :narrow   ?a
+  │         :hidden   t
+  │         :category 'buffer
+  │         :face     'consult-buffer
+  │         :history  'buffer-name-history
+  │         :state    #'consult--buffer-state
+  │         :items    (lambda () (consult--buffer-query
+  │                               :sort 'visibility
+  │                               :as #'buffer-name)))
   │   "All Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │ (defvar my:bufferlo-consult--source-local-buffers
   │   (list :name "Bufferlo Local Buffers"
-  │ 	:narrow   ?l
-  │ 	:category 'buffer
-  │ 	:face     'consult-buffer
-  │ 	:history  'buffer-name-history
-  │ 	:state    #'consult--buffer-state
-  │ 	:default  t
-  │ 	:items    (lambda () (consult--buffer-query
-  │ 			      :predicate #'bufferlo-local-buffer-p
-  │ 			      :sort 'visibility
-  │ 			      :as #'buffer-name)))
+  │         :narrow   ?l
+  │         :category 'buffer
+  │         :face     'consult-buffer
+  │         :history  'buffer-name-history
+  │         :state    #'consult--buffer-state
+  │         :default  t
+  │         :items    (lambda () (consult--buffer-query
+  │                               :predicate #'bufferlo-local-buffer-p
+  │                               :sort 'visibility
+  │                               :as #'buffer-name)))
   │   "Local Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │ ;; add in the reverse order of display preference
@@ -1107,15 +1109,23 @@ Consult
   This is the second, simpler `consult' integration method using its
   native buffer filter. This shows local bufferlo buffers as the default
   `consult' buffer list. To view non-local buffers, "narrow" the list
-  using key sequence "< O" (where "<" is the default consult narrowing
+  using key sequence "< o" (where "<" is the default consult narrowing
   character) and the `consult' buffer list switches to to non-local
   buffers. To return to the local buffer list, enter the key sequence "<
-  <" to undo list narrowing.
+  <" to undo list narrowing. See [Consult Narrowing and Grouping] and
+  [Virtual Buffers (aka Buffer Switching)].
 
   ┌────
   │ ;; This defaults to #'buffer-list which shows all buffers.
   │ (setq consult-buffer-list-function #'bufferlo-local-buffers)
   └────
+
+
+[Consult Narrowing and Grouping]
+<https://github.com/minad/consult?tab=readme-ov-file#narrowing-and-grouping>
+
+[Virtual Buffers (aka Buffer Switching)]
+<https://github.com/minad/consult?tab=readme-ov-file#virtual-buffers>
 
 
 Ivy
@@ -1129,14 +1139,14 @@ Ivy
   │ If the prefix arument is given, include all buffers."
   │     (interactive)
   │     (if current-prefix-arg
-  │ 	(ivy-switch-buffer)
+  │         (ivy-switch-buffer)
   │       (ivy-read "Switch to local buffer: " #'internal-complete-buffer
-  │ 		:predicate (lambda (b) (bufferlo-local-buffer-p (cdr b)))
-  │ 		:keymap ivy-switch-buffer-map
-  │ 		:preselect (buffer-name (other-buffer (current-buffer)))
-  │ 		:action #'ivy--switch-buffer-action
-  │ 		:matcher #'ivy--switch-buffer-matcher
-  │ 		:caller 'ivy-switch-buffer)))
+  │                 :predicate (lambda (b) (bufferlo-local-buffer-p (cdr b)))
+  │                 :keymap ivy-switch-buffer-map
+  │                 :preselect (buffer-name (other-buffer (current-buffer)))
+  │                 :action #'ivy--switch-buffer-action
+  │                 :matcher #'ivy--switch-buffer-matcher
+  │                 :caller 'ivy-switch-buffer)))
   └────
 
 
@@ -1227,31 +1237,31 @@ Complete configuration sample
   │   (setq bufferlo-mode-line-left-prefix nil)
   │   (setq bufferlo-mode-line-right-suffix nil)
   │   (setq switch-to-prev-buffer-skip-regexp
-  │ 	(concat "\\` *"
-  │ 		"\\(\\*\\(" ; earmuffs
-  │ 		(mapconcat #'identity
-  │ 			   '("Messages"
-  │ 			     "Buffer List"
-  │ 			     "Ibuffer"
-  │ 			     "Local Buffer List" ; bufferlo
-  │ 			     "scratch"
-  │ 			     "Occur"
-  │ 			     "Completions"
-  │ 			     "Help"
-  │ 			     "Warnings"
-  │ 			     "Apropos"
-  │ 			     "Bookmark List"
-  │ 			     "Async-native-compile-log"
-  │ 			     "Flymake log"
-  │ 			     "ruff-format errors"
-  │ 			     "vc-diff")
-  │ 			   "\\|")
-  │ 		"\\)\\*\\)"
-  │ 		"\\|" (rx "*" (1+ anything) " Ibuffer*")
-  │ 		"\\|" (rx "*helpful " (1+ anything) "*")
-  │ 		"\\|" (rx "*tramp" (1+ anything) "*")
-  │ 		"\\|" (rx "magit" (* anything) ": " (1+ anything))
-  │ 		"\\'"))
+  │         (concat "\\` *"
+  │                 "\\(\\*\\(" ; earmuffs
+  │                 (mapconcat #'identity
+  │                            '("Messages"
+  │                              "Buffer List"
+  │                              "Ibuffer"
+  │                              "Local Buffer List" ; bufferlo
+  │                              "scratch"
+  │                              "Occur"
+  │                              "Completions"
+  │                              "Help"
+  │                              "Warnings"
+  │                              "Apropos"
+  │                              "Bookmark List"
+  │                              "Async-native-compile-log"
+  │                              "Flymake log"
+  │                              "ruff-format errors"
+  │                              "vc-diff")
+  │                            "\\|")
+  │                 "\\)\\*\\)"
+  │                 "\\|" (rx "*" (1+ anything) " Ibuffer*")
+  │                 "\\|" (rx "*helpful " (1+ anything) "*")
+  │                 "\\|" (rx "*tramp" (1+ anything) "*")
+  │                 "\\|" (rx "magit" (* anything) ": " (1+ anything))
+  │                 "\\'"))
   │   (setq bufferlo-kill-buffers-prompt t)
   │   (setq bufferlo-kill-modified-buffers-policy 'retain-modified-kill-without-file-name) ; nil 'retain-modified 'retain-modified-kill-without-file-name 'kill-modified
   │   (setq bufferlo-bookmark-inhibit-bookmark-point t)
@@ -1285,18 +1295,18 @@ Complete configuration sample
   │   (setq bookmark-bmenu-type-column-width 12) ; supported in Emacs 31 (innocuous on earlier versions)
   │ 
   │   (setq bufferlo-bookmark-buffers-exclude-filters
-  │ 	(list
-  │ 	 (rx bos " " (1+ anything)) ; ignores "invisible" buffers; e.g., " *Minibuf...", " markdown-code-fontification:..."
-  │ 	 (rx bos "*" (1+ anything) "*") ; ignores "special" buffers; e.g;, "*Messages*", "*scratch*", "*occur*"
-  │ 	 ))
+  │         (list
+  │          (rx bos " " (1+ anything)) ; ignores "invisible" buffers; e.g., " *Minibuf...", " markdown-code-fontification:..."
+  │          (rx bos "*" (1+ anything) "*") ; ignores "special" buffers; e.g;, "*Messages*", "*scratch*", "*occur*"
+  │          ))
   │ 
   │   (setq bufferlo-bookmark-buffers-include-filters
-  │ 	(list
-  │ 	 (rx bos "*shell*") ; comment out shells if you do not have bookmark support
-  │ 	 (rx bos "*" (1+ anything) "-shell*") ; project.el shell buffers
-  │ 	 (rx bos "*eshell*")
-  │ 	 (rx bos "*" (1+ anything) "-eshell*") ; project.el eshell buffers
-  │ 	 ))
+  │         (list
+  │          (rx bos "*shell*") ; comment out shells if you do not have bookmark support
+  │          (rx bos "*" (1+ anything) "-shell*") ; project.el shell buffers
+  │          (rx bos "*eshell*")
+  │          (rx bos "*" (1+ anything) "-eshell*") ; project.el eshell buffers
+  │          ))
   │ 
   │   (defun my/bufferlo-bookmarks-save-p (bookmark-name)
   │     (string-match-p (rx "=as") bookmark-name))
@@ -1309,42 +1319,42 @@ Complete configuration sample
   │ 
   │   (defvar my:bufferlo-consult--source-local-buffers
   │     (list :name "Bufferlo Local Buffers"
-  │ 	  :narrow   ?l
-  │ 	  :category 'buffer
-  │ 	  :face     'consult-buffer
-  │ 	  :history  'buffer-name-history
-  │ 	  :state    #'consult--buffer-state
-  │ 	  :default  t
-  │ 	  :items    (lambda () (consult--buffer-query
-  │ 				:predicate #'bufferlo-local-buffer-p
-  │ 				:sort 'visibility
-  │ 				:as #'buffer-name)))
+  │           :narrow   ?l
+  │           :category 'buffer
+  │           :face     'consult-buffer
+  │           :history  'buffer-name-history
+  │           :state    #'consult--buffer-state
+  │           :default  t
+  │           :items    (lambda () (consult--buffer-query
+  │                                 :predicate #'bufferlo-local-buffer-p
+  │                                 :sort 'visibility
+  │                                 :as #'buffer-name)))
   │     "Local Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │   (defvar my:bufferlo-consult--source-other-buffers
   │     (list :name "Bufferlo Other Buffers"
-  │ 	  :narrow   ?o
-  │ 	  :category 'buffer
-  │ 	  :face     'consult-buffer
-  │ 	  :history  'buffer-name-history
-  │ 	  :state    #'consult--buffer-state
-  │ 	  :items    (lambda () (consult--buffer-query
-  │ 				:predicate #'bufferlo-non-local-buffer-p
-  │ 				:sort 'visibility
-  │ 				:as #'buffer-name)))
+  │           :narrow   ?o
+  │           :category 'buffer
+  │           :face     'consult-buffer
+  │           :history  'buffer-name-history
+  │           :state    #'consult--buffer-state
+  │           :items    (lambda () (consult--buffer-query
+  │                                 :predicate #'bufferlo-non-local-buffer-p
+  │                                 :sort 'visibility
+  │                                 :as #'buffer-name)))
   │     "Non-local Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │   (defvar my:bufferlo-consult--source-all-buffers
   │     (list :name "Bufferlo All Buffers"
-  │ 	  :narrow   ?a
-  │ 	  :hidden   t
-  │ 	  :category 'buffer
-  │ 	  :face     'consult-buffer
-  │ 	  :history  'buffer-name-history
-  │ 	  :state    #'consult--buffer-state
-  │ 	  :items    (lambda () (consult--buffer-query
-  │ 				:sort 'visibility
-  │ 				:as #'buffer-name)))
+  │           :narrow   ?a
+  │           :hidden   t
+  │           :category 'buffer
+  │           :face     'consult-buffer
+  │           :history  'buffer-name-history
+  │           :state    #'consult--buffer-state
+  │           :items    (lambda () (consult--buffer-query
+  │                                 :sort 'visibility
+  │                                 :as #'buffer-name)))
   │     "All Bufferlo buffer candidate source for `consult-buffer'.")
   │ 
   │   ;; add in the reverse order of display preference
@@ -1375,11 +1385,11 @@ CRM prompt enhancement
   │ ;; Prompt indicator for `completing-read-multiple'.
   │ (when (< emacs-major-version 31)
   │   (advice-add #'completing-read-multiple :filter-args
-  │ 	      (lambda (args)
-  │ 		(cons (format "[CRM%s] %s"
-  │ 			      (string-replace "[ \t]*" "" crm-separator)
-  │ 			      (car args))
-  │ 		      (cdr args))))))
+  │               (lambda (args)
+  │                 (cons (format "[CRM%s] %s"
+  │                               (string-replace "[ \t]*" "" crm-separator)
+  │                               (car args))
+  │                       (cdr args))))))
   └────
 
 
