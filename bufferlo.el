@@ -1124,7 +1124,9 @@ string, FACE is the face for STR."
                   #'bufferlo-bookmark--tab-save-on-close)
         (add-hook 'delete-frame-functions
                   #'bufferlo-bookmark--frame-save-on-delete)
-        ;; bookmark advice
+        ;; bookmark hook and advice
+        (add-hook 'bookmark-after-load-file-hook
+                  #'bufferlo--bookmark-after-load-file-hook)
         (advice-add #'bookmark--jump-via :around #'bufferlo--bookmark--jump-via-advice)
         (advice-add #'bookmark-rename :around #'bufferlo--bookmark-rename-advice)
         (advice-add #'bookmark-delete :around #'bufferlo--bookmark-delete-advice)
@@ -1174,7 +1176,9 @@ string, FACE is the face for STR."
                  #'bufferlo-bookmark--tab-save-on-close)
     (remove-hook 'delete-frame-functions
                  #'bufferlo-bookmark--frame-save-on-delete)
-    ;; bookmark advice
+    ;; bookmark hook and advice
+    (remove-hook 'bookmark-after-load-file-hook
+                 #'bufferlo--bookmark-after-load-file-hook)
     (advice-remove #'bookmark--jump-via #'bufferlo--bookmark--jump-via-advice)
     (advice-remove #'bookmark-rename #'bufferlo--bookmark-rename-advice)
     (advice-remove #'bookmark-delete #'bufferlo--bookmark-delete-advice)))
@@ -1956,6 +1960,11 @@ argument INTERNAL-TOO is non-nil."
         ;; delete windows *and* their frame so we have to test if
         ;; the frame in question is still live.
         (when (frame-live-p frame)
+          ;; Something could go wrong while trying to delete the frame.
+          ;; Since we already killed all buffers we disconnect the bookmark.
+          ;; This prevents the auto-save feature from overwriting an existing
+          ;; bookmark with the empty buffer list.
+          (set-frame-parameter frame 'bufferlo-bookmark-frame-name nil)
           ;; TODO: Emacs 30 frame-deletable-p
           ;; account for top-level, non-child frames
           (when (= 1 (length (seq-filter
@@ -5028,7 +5037,15 @@ exist."
         (bufferlo-tab-close-kill-buffers)
       (message "No active bufferlo frame or tab bookmark to close."))))
 
-;;; bookmark advisories
+;;; bookmark hook and advice
+
+(defun bufferlo--bookmark-after-load-file-hook ()
+  "Scan the loaded bookmarks list for missing active bufferlo bookmarks."
+  (let ((alist-bookmarks (bufferlo--bookmark-get-names)))
+    (dolist (bookmark (bufferlo--active-bookmarks))
+      (unless (member (car bookmark) alist-bookmarks)
+        (warn "Active bufferlo bookmark `%s' not present in loaded bookmarks"
+              (car bookmark))))))
 
 ;; (defun bookmark-set (&optional name no-overwrite)
 ;; (defun bookmark-set-no-overwrite (&optional name push-bookmark)
